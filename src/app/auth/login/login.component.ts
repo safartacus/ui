@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AuthService } from '../../core/services/auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-login',
@@ -26,9 +28,9 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
             <div class="error" *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['required']">
               E-posta adresi zorunludur
             </div>
-            <div class="error" *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['email']">
+            <!-- <div class="error" *ngIf="loginForm.get('email')?.touched && loginForm.get('email')?.errors?.['email']">
               Geçerli bir e-posta adresi giriniz
-            </div>
+            </div> -->
           </div>
 
           <div class="form-group">
@@ -62,7 +64,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } 
           <button
             type="submit"
             class="submit-btn"
-            [disabled]="!loginForm.valid || isSubmitting">
+            [disabled]=" isSubmitting">
             {{ isSubmitting ? 'Giriş yapılıyor...' : 'Giriş Yap' }}
           </button>
         </form>
@@ -235,7 +237,7 @@ export class LoginComponent {
   showPassword = false;
   isSubmitting = false;
 
-  constructor(private fb: FormBuilder) {
+  constructor(private fb: FormBuilder, private authService: AuthService, private router: Router) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required]],
@@ -248,14 +250,17 @@ export class LoginComponent {
   }
 
   onSubmit() {
-    if (this.loginForm.valid) {
       this.isSubmitting = true;
-      // TODO: Implement login logic
-      console.log(this.loginForm.value);
-      setTimeout(() => {
-        this.isSubmitting = false;
-        // TODO: Handle login success/error
-      }, 2000);
-    }
+      const { email, password } = this.loginForm.value;
+      this.authService.login(email, password).subscribe({
+        next: () => {
+          this.isSubmitting = false;
+          this.router.navigate(['/']);
+        },
+        error: (err) => {
+          this.isSubmitting = false;
+          alert('Giriş başarısız! Kullanıcı adı veya şifre yanlış.');
+        }
+      });
   }
 }

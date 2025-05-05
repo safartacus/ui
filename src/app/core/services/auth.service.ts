@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import * as jwt_decode from 'jwt-decode';
 
 export interface User {
   id: number;
@@ -23,20 +24,38 @@ export class AuthService {
   currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
-    // Local storage'dan kullanıcı bilgilerini yükle
     const storedUser = localStorage.getItem('currentUser');
     if (storedUser) {
       this.currentUserSubject.next(JSON.parse(storedUser));
     }
   }
 
-  login(email: string, password: string): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(`${environment.apiUrl}/auth/login`, { email, password })
+  login(username: string, password: string): Observable<any> {
+    const body = new HttpParams()
+      .set('grant_type', 'password')
+      .set('username', username)
+      .set('password', password)
+      .set('client_id', 'HarmanaGel_App')
+      .set('scope', 'HarmanaGel');
+
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/x-www-form-urlencoded'
+    });
+
+    return this.http.post<any>('https://localhost:44315/connect/token', body.toString(), { headers })
       .pipe(
         tap(response => {
-          localStorage.setItem('token', response.token);
-          localStorage.setItem('currentUser', JSON.stringify(response.user));
-          this.currentUserSubject.next(response.user);
+          localStorage.setItem('token', response.access_token);
+          // Kullanıcı bilgisi token'dan decode edilip saklanabilir
+          const decoded: any = jwt_decode.jwtDecode(response.access_token);
+          const user = {
+            id: decoded.sub,
+            email: decoded.email,
+            name: decoded.given_name || decoded.preferred_username || decoded.unique_name,
+            avatar: undefined
+          };
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          this.currentUserSubject.next(user);
         })
       );
   }
